@@ -6,11 +6,11 @@ import numpy as np
 from PIL import Image
 
 # --- CORE DIMENSION CONFIGURATION ---
-TARGET_HEIGHT_CM = 5.0  # Exact height of the character in cm
+TARGET_HEIGHT_CM = 4.0  # Exact height of the character in cm
 OFFSET_MM = 2.0  # Distance from character to the cut line
-DPI = 300  # Standard printing resolution
-DASH_LENGTH_PX = 12  # Length of each dash segment
-SPACE_LENGTH_PX = 8  # Gap between dashes
+DPI = 150  # Standard printing resolution
+DASH_LENGTH_PX = 8  # Length of each dash segment
+SPACE_LENGTH_PX = 6  # Gap between dashes
 # ------------------------------------
 
 
@@ -90,14 +90,18 @@ def process_character_image(input_path, output_path):
                     should_draw = True
                     distance_accumulator = 0
 
-    # 8. Composite onto a clean white background canvas
-    final_canvas = Image.new("RGB", (extended_w, extended_h), (255, 255, 255))
-    final_canvas.paste(padded_character, (0, 0), padded_character)
-
+    # 8. Composite onto a transparent background canvas
     dash_rgba = np.zeros((extended_h, extended_w, 4), dtype=np.uint8)
-    dash_rgba[dash_layer > 0] = [100, 100, 100, 255]
+    dash_rgba[dash_layer > 0] = [153, 153, 153, 255]
     dash_pil = Image.fromarray(dash_rgba)
-    final_canvas.paste(dash_pil, (0, 0), dash_pil)
+
+    # Merge character and dashes into a single transparent layer
+    final_canvas = Image.alpha_composite(padded_character, dash_pil)
+
+    # 9. Trim excess padding to the absolute minimum
+    bbox = final_canvas.getbbox()
+    if bbox:
+        final_canvas = final_canvas.crop(bbox)
 
     # Save output preserving DPI headers
     final_canvas.save(output_path, "PNG", dpi=(DPI, DPI))
